@@ -7,6 +7,7 @@ plugins {
 android {
     namespace "com.hbx.shortapp"
     compileSdk 34
+    ndkVersion "25.1.8937393"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -14,12 +15,12 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = "1.8"
     }
 
     defaultConfig {
-        applicationId "com.hbx.shortapp"
-        minSdk 21
+        applicationId "com.hbx.short"
+        minSdk 23
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
@@ -27,13 +28,16 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
+            // Use debug signing for CI builds.
+            // Replace with a real keystore for Play Store releases.
+            signingConfig signingConfigs.debug
         }
     }
 }
 
+// Flutter source root — must point two levels up from android/app
 flutter {
-    source '../..'
+    source "../.."
 }
