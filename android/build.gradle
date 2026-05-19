@@ -1,3 +1,7 @@
+// Root build.gradle
+// Plugin management has moved to settings.gradle (Flutter 3.22+ style).
+// Keep only repository / build-dir configuration here.
+
 allprojects {
     repositories {
         google()
@@ -5,12 +9,11 @@ allprojects {
     }
 }
 
-rootProject.buildDir = '../build'
+rootProject.buildDir = "../build"
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(':app')
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {
