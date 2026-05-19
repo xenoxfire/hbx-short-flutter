@@ -1,12 +1,29 @@
 pluginManagement {
+    /**
+     * Resolve Flutter SDK path in priority order:
+     *  1. android/local.properties  (local dev)
+     *  2. FLUTTER_HOME env var       (subosito/flutter-action in CI)
+     *  3. FLUTTER_ROOT env var       (alternate CI env)
+     */
     def flutterSdkPath = {
-        def properties = new Properties()
-        file("local.properties").withInputStream { properties.load(it) }
-        def flutterSdkPath = properties.getProperty("flutter.sdk")
-        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-        return flutterSdkPath
+        def localPropertiesFile = file("local.properties")
+        if (localPropertiesFile.exists()) {
+            def props = new Properties()
+            localPropertiesFile.withInputStream { props.load(it) }
+            def p = props.getProperty("flutter.sdk")
+            if (p != null && !p.trim().isEmpty()) return p.trim()
+        }
+        def envPath = System.getenv("FLUTTER_HOME") ?: System.getenv("FLUTTER_ROOT")
+        if (envPath != null) return envPath
+        throw new GradleException(
+            "Flutter SDK not found.\n" +
+            "  Local dev : set 'flutter.sdk' in android/local.properties\n" +
+            "  CI        : ensure FLUTTER_HOME or FLUTTER_ROOT env var is set")
     }()
 
+    settings.ext.flutterSdkPath = flutterSdkPath
+
+    // Make the Flutter Gradle plugin available as a composite build
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
@@ -17,7 +34,9 @@ pluginManagement {
 }
 
 plugins {
-    id "dev.flutter.flutter-gradle-plugin" version "1.0.0" apply false
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "com.android.application"           version "8.1.4" apply false
+    id "org.jetbrains.kotlin.android"      version "1.9.10" apply false
 }
 
 include ":app"
