@@ -6,8 +6,8 @@ plugins {
 
 android {
     namespace "com.hbx.shortapp"
-    compileSdk 34
-    ndkVersion "25.1.8937393"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -19,18 +19,15 @@ android {
     }
 
     defaultConfig {
-        // The real package name users see on the device
-        applicationId "com.hbx.short"
-        minSdk 23
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        applicationId "com.hbx.shortapp"
+        minSdkVersion 21
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            shrinkResources false
             signingConfig signingConfigs.debug
         }
     }
