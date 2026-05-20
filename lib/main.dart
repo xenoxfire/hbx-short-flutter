@@ -234,6 +234,14 @@ class _WebViewPageState extends State<WebViewPage>
       AndroidBridge.postMessage(JSON.stringify({ action: 'getFcmToken' }));
     },
 
+    // Sync Float Sheet config to Android so native bubble can use it
+    syncBubbleConfig: function(configJson) {
+      AndroidBridge.postMessage(JSON.stringify({
+        action: 'syncBubbleConfig',
+        configJson: typeof configJson === 'string' ? configJson : JSON.stringify(configJson)
+      }));
+    },
+
     // Called by Flutter to sync state back into JS
     _setOverlayGranted: function(v) { _overlayGranted = v; },
     _setBubbleRunning:  function(v) { _bubbleRunning  = v; },
@@ -384,6 +392,12 @@ class _WebViewPageState extends State<WebViewPage>
 
         case 'copyClipboard':
           await _platform.invokeMethod('copyToClipboard', {'text': data['text'] ?? ''});
+          break;
+
+        case 'syncBubbleConfig':
+          await _platform.invokeMethod('syncBubbleConfig', {
+            'configJson': data['configJson'] ?? '{}',
+          });
           break;
 
         case 'getFcmToken':

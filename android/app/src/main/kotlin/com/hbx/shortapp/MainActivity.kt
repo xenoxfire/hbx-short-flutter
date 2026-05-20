@@ -123,6 +123,14 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
 
+                    "syncBubbleConfig" -> {
+                        // Web app sends its localStorage config → save to SharedPreferences
+                        // so BubbleOverlayService can read it without needing the WebView
+                        val json = call.argument<String>("configJson") ?: "{}"
+                        BubbleConfigStore.save(this, json)
+                        result.success(null)
+                    }
+
                     "getFcmToken" -> {
                         try {
                             FirebaseMessaging.getInstance().token
