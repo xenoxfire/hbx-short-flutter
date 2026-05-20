@@ -6,9 +6,16 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.RectF
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
@@ -27,13 +34,16 @@ class BubbleOverlayService : Service() {
         private const val CHANNEL_ID = "hbx_bubble_channel"
         private const val NOTIF_ID   = 1001
         const val ACTION_STOP        = "ACTION_STOP_BUBBLE"
+        const val ACTION_RESIZE      = "ACTION_RESIZE_BUBBLE"
+        const val EXTRA_SIZE_DP      = "EXTRA_SIZE_DP"
+        private const val DEFAULT_SIZE_DP = 62
     }
 
     private var windowManager: WindowManager? = null
     private var bubbleRoot: View? = null
+    private var bubbleImageView: ImageView? = null
     private lateinit var layoutParams: WindowManager.LayoutParams
-
-    // ── Lifecycle ─────────────────────────────────────────────────
+    private var currentSizeDp = DEFAULT_SIZE_DP
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -42,12 +52,16 @@ class BubbleOverlayService : Service() {
         isRunning = true
         createNotificationChannel()
         startForeground(NOTIF_ID, buildNotification())
-        showBubble()
+        showBubble(DEFAULT_SIZE_DP)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopSelf()
+        when (intent?.action) {
+            ACTION_STOP   -> stopSelf()
+            ACTION_RESIZE -> {
+                val newSize = intent.getIntExtra(EXTRA_SIZE_DP, currentSizeDp)
+                resizeBubble(newSize)
+            }
         }
         return START_STICKY
     }
@@ -78,7 +92,6 @@ class BubbleOverlayService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        // "Stop" action from notification
         val stopIntent = Intent(this, BubbleOverlayService::class.java).apply {
             action = ACTION_STOP
         }
@@ -86,8 +99,6 @@ class BubbleOverlayService : Service() {
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        // Tap notification → open app
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -98,7 +109,7 @@ class BubbleOverlayService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("HBX Short")
-            .setContentText("Floating bubble is active. Tap to open app.")
+            .setContentText("Bubble active — tap to open app")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(openPending)
             .addAction(0, "Stop Bubble", stopPending)
@@ -110,13 +121,14 @@ class BubbleOverlayService : Service() {
 
     // ── Bubble View ───────────────────────────────────────────────
 
-    private fun showBubble() {
+    private fun showBubble(sizeDp: Int) {
+        currentSizeDp = sizeDp
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        val density  = resources.displayMetrics.density
-        val sizePx   = (62 * density).toInt()
-        val screenW  = resources.displayMetrics.widthPixels
-        val screenH  = resources.displayMetrics.heightPixels
+        val density = resources.displayMetrics.density
+        val sizePx  = (sizeDp * density).toInt()
+        val screenW = resources.displayMetrics.widthPixels
+        val screenH = resources.displayMetrics.heightPixels
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -133,32 +145,91 @@ class BubbleOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenW - sizePx - (12 * density).toInt()  // start on right edge
-            y = (screenH * 0.45).toInt()
+            x = screenW - sizePx - (12 * density).toInt()
+            y = (screenH * 0.40).toInt()
         }
 
-        // ── Build the bubble view ──
         val container = FrameLayout(this)
 
+        // Use the actual launcher icon as a rounded bitmap
         val iv = ImageView(this).apply {
-            setImageResource(R.mipmap.ic_launcher)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            background = circleBg()
-            elevation = 8f
+            setImageBitmap(getRoundedLauncherBitmap(sizePx))
+            scaleType = ImageView.ScaleType.FIT_XY
+            elevation = 10f
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
         }
+        bubbleImageView = iv
         container.addView(iv)
         bubbleRoot = container
 
-        // ── Touch: drag + click ────────────────────────────────────
-        var touchStartX = 0f
-        var touchStartY = 0f
+        attachTouchListener(container, sizePx)
+        windowManager?.addView(bubbleRoot, layoutParams)
+    }
+
+    /** Decode the launcher icon PNG and clip it into a circle. */
+    private fun getRoundedLauncherBitmap(sizePx: Int): Bitmap {
+        val raw = try {
+            BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher_round)
+                ?: BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+        } catch (_: Exception) {
+            null
+        }
+
+        val output = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint  = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        // Draw glowing border ring
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color  = Color.parseColor("#3B82F6")
+            style  = Paint.Style.STROKE
+            strokeWidth = (3 * resources.displayMetrics.density)
+            setShadowLayer(8f, 0f, 0f, Color.parseColor("#803B82F6"))
+        }
+        canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f - 2f, borderPaint)
+
+        // Clip circle mask
+        val radius = sizePx / 2f - (3 * resources.displayMetrics.density)
+        canvas.drawCircle(sizePx / 2f, sizePx / 2f, radius, paint)
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+
+        if (raw != null) {
+            val scaled = Bitmap.createScaledBitmap(raw, sizePx, sizePx, true)
+            canvas.drawBitmap(scaled, 0f, 0f, paint)
+            if (scaled != raw) scaled.recycle()
+        } else {
+            // Fallback: blue circle with "HBX" text
+            paint.xfermode = null
+            paint.color = Color.parseColor("#0D1117")
+            canvas.drawCircle(sizePx / 2f, sizePx / 2f, radius, paint)
+            paint.color = Color.parseColor("#3B82F6")
+            paint.textSize = sizePx * 0.3f
+            paint.textAlign = Paint.Align.CENTER
+            canvas.drawText("HBX", sizePx / 2f, sizePx / 2f + paint.textSize * 0.35f, paint)
+        }
+        paint.xfermode = null
+        return output
+    }
+
+    private fun resizeBubble(newSizeDp: Int) {
+        currentSizeDp = newSizeDp
+        val density  = resources.displayMetrics.density
+        val sizePx   = (newSizeDp * density).toInt()
+        layoutParams.width  = sizePx
+        layoutParams.height = sizePx
+        bubbleImageView?.setImageBitmap(getRoundedLauncherBitmap(sizePx))
+        try { windowManager?.updateViewLayout(bubbleRoot, layoutParams) } catch (_: Exception) {}
+    }
+
+    private fun attachTouchListener(container: FrameLayout, sizePx: Int) {
+        var touchStartX  = 0f
+        var touchStartY  = 0f
         var windowStartX = 0
         var windowStartY = 0
-        var isDragging = false
+        var isDragging   = false
 
         container.setOnTouchListener { _, event ->
             when (event.action) {
@@ -173,9 +244,7 @@ class BubbleOverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - touchStartX).toInt()
                     val dy = (event.rawY - touchStartY).toInt()
-                    if (!isDragging && (abs(dx) > 10 || abs(dy) > 10)) {
-                        isDragging = true
-                    }
+                    if (!isDragging && (abs(dx) > 8 || abs(dy) > 8)) isDragging = true
                     if (isDragging) {
                         layoutParams.x = windowStartX + dx
                         layoutParams.y = windowStartY + dy
@@ -185,30 +254,22 @@ class BubbleOverlayService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (isDragging) {
-                        snapToEdge(sizePx)
-                    } else {
-                        // Click → bring app to foreground
-                        openApp()
-                    }
+                    if (isDragging) snapToEdge(sizePx) else openApp()
                     true
                 }
                 else -> false
             }
         }
-
-        windowManager?.addView(bubbleRoot, layoutParams)
     }
 
-    /** Snap bubble to the nearest screen edge (left or right). */
     private fun snapToEdge(sizePx: Int) {
         val screenW = resources.displayMetrics.widthPixels
-        val targetX = if (layoutParams.x + sizePx / 2 < screenW / 2) {
-            0
+        val margin  = (12 * resources.displayMetrics.density).toInt()
+        layoutParams.x = if (layoutParams.x + sizePx / 2 < screenW / 2) {
+            margin
         } else {
-            screenW - sizePx
+            screenW - sizePx - margin
         }
-        layoutParams.x = targetX
         try { windowManager?.updateViewLayout(bubbleRoot, layoutParams) }
         catch (_: Exception) {}
     }
@@ -225,13 +286,5 @@ class BubbleOverlayService : Service() {
         catch (_: Exception) {}
         bubbleRoot    = null
         windowManager = null
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────
-
-    private fun circleBg(): GradientDrawable = GradientDrawable().apply {
-        shape = GradientDrawable.OVAL
-        setColor(Color.parseColor("#0d1117"))
-        setStroke(4, Color.parseColor("#3b82f6"))
     }
 }

@@ -1,7 +1,7 @@
 name: hbx_short
 description: HBX Short - WebView app with Android floating bubble overlay
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -9,7 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # WebView
   webview_flutter: ^4.4.0
+
+  # Firebase — Push notifications
+  firebase_core: ^2.27.1
+  firebase_messaging: ^14.7.15
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +24,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/

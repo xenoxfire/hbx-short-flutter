@@ -1,25 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet access for WebView -->
+    <!-- Internet & network -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
-    <!-- Required for the floating overlay bubble -->
+    <!-- Floating overlay bubble -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
-    <!-- Required for foreground service (Android 9+) -->
+    <!-- Foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-
-    <!-- Required for API 34+ foreground service type -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+
+    <!-- Clipboard & vibration -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- Wake lock for alarm-based notification delete -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+
+    <!-- Push notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="HBX Short"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="false"
         android:hardwareAccelerated="true"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:largeHeap="true">
 
         <activity
             android:name=".MainActivity"
@@ -50,9 +62,34 @@
                 android:value="Floating overlay bubble for HBX Short app"/>
         </service>
 
+        <!-- Firebase Cloud Messaging service -->
+        <service
+            android:name=".HbxFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+
+        <!-- 24-hour notification auto-delete receiver -->
+        <receiver
+            android:name=".NotificationDeleteReceiver"
+            android:exported="false"/>
+
         <!-- Required for Flutter plugins -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2"/>
+
+        <!-- Firebase default notification channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="hbx_push_channel"/>
+
+        <!-- Firebase notification icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher"/>
+
     </application>
 </manifest>
