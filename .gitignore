@@ -1,3 +1,6 @@
+# Replit chat attachments — never commit these
+attached_assets/
+
 # Flutter/Dart
 .dart_tool/
 .flutter-plugins
