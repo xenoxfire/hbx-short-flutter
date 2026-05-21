@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase (required by firebase_core + firebase_messaging plugins)
+  await Firebase.initializeApp();
 
   // Edge-to-edge full screen — no status bar, no navigation bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
