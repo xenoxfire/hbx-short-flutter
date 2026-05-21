@@ -163,7 +163,6 @@ class BubbleOverlayService : Service() {
         bubbleRoot = container
 
         attachBubbleTouchListener(container, sizePx)
-        windowManager?.addView(bubbleRoot, container.layoutParams ?: FrameLayout.LayoutParams(sizePx, sizePx))
         windowManager?.addView(bubbleRoot, bubbleParams)
     }
 

@@ -23,8 +23,8 @@ android {
         applicationId "com.hbx.short"
         minSdk 23
         targetSdk 34
-        versionCode 3
-        versionName "1.1.1"
+        versionCode 4
+        versionName "1.1.2"
         multiDexEnabled true
     }
 
@@ -42,12 +42,6 @@ android {
 }
 
 dependencies {
-    // Firebase BOM — manages all Firebase library versions
-    implementation platform('com.google.firebase:firebase-bom:32.7.0')
-    implementation 'com.google.firebase:firebase-messaging-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
-
-    // AndroidX
     implementation 'androidx.core:core-ktx:1.12.0'
 }
 
