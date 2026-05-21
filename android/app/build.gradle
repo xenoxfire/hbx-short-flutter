@@ -13,7 +13,6 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
-        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -24,8 +23,8 @@ android {
         applicationId "com.hbx.short"
         minSdk 23
         targetSdk 34
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "1.1.1"
         multiDexEnabled true
     }
 
@@ -47,9 +46,6 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.google.firebase:firebase-analytics-ktx'
-
-    // Core desugar for newer Java APIs on older Android
-    coreLibraryDesugaring 'com.android.tools.build:desugaring:2.0.4'
 
     // AndroidX
     implementation 'androidx.core:core-ktx:1.12.0'
