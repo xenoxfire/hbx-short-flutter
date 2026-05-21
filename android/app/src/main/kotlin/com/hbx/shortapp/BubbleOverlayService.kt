@@ -418,7 +418,7 @@ class BubbleOverlayService : Service() {
         val cy = sizePx / 2f
 
         val src: Bitmap? = try {
-            BitmapFactory.decodeResource(resources, R.drawable.launcher_bubble_icon)
+            BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
         } catch (_: Exception) { null }
 
         val output = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
